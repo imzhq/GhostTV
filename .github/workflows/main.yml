@@ -1,44 +1,19 @@
-name: Build Unsigned iOS IPA
-on: workflow_dispatch
-
-jobs:
-  build:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: |
-          npm install
-          npx expo install expo-dev-client react-native-vlc-media-player
-
-      - name: Prebuild iOS
-        run: npx expo prebuild --platform ios --no-install
-
-      - name: Install CocoaPods
+- name: Build Archive
         run: |
           cd ios
-          pod install
-
-      - name: Build Archive
-        run: |
-          cd ios
-          # This line automatically finds the workspace name so it won't fail
-          WORKSPACE=$(ls -d *.xcworkspace | head -1)
-          xcodebuild -workspace "$WORKSPACE" -scheme GhostTV -configuration Release -sdk iphoneos -derivedDataPath build
+          # 1. Clean up any old cached files
+          xcodebuild clean -workspace GhostTV.xcworkspace -scheme GhostTV
           
+          # 2. Build the app with forced settings
+          xcodebuild -workspace GhostTV.xcworkspace \
+            -scheme GhostTV \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            SWIFT_OPTIMIZATION_LEVEL="-Onone" \
+            BITCODE_GENERATION_MODE=bitcode
+          
+          # 3. Package into IPA
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/*.app Payload/
           zip -r ../GhostTV.ipa Payload
-          
-      - name: Upload IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: GhostTV-Unsigned-IPA
-          path: GhostTV.ipa
