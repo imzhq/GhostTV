@@ -6,28 +6,39 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
-      
+          cache: 'npm'
+
       - name: Install Dependencies
         run: |
           npm install
           npx expo install expo-dev-client react-native-vlc-media-player
-      
+
       - name: Prebuild iOS
         run: npx expo prebuild --platform ios --no-install
+
+      - name: Install CocoaPods
+        run: |
+          cd ios
+          pod install
 
       - name: Build Archive
         run: |
           cd ios
-          xcodebuild -workspace *.xcworkspace -scheme GhostTV -configuration Release -sdk iphoneos -derivedDataPath build
+          # This line automatically finds the workspace name so it won't fail
+          WORKSPACE=$(ls -d *.xcworkspace | head -1)
+          xcodebuild -workspace "$WORKSPACE" -scheme GhostTV -configuration Release -sdk iphoneos -derivedDataPath build
+          
           mkdir -p Payload
           cp -r build/Build/Products/Release-iphoneos/*.app Payload/
-          zip -r GhostTV.ipa Payload
+          zip -r ../GhostTV.ipa Payload
           
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: GhostTV-Unsigned-IPA
-          path: ios/GhostTV.ipa
+          path: GhostTV.ipa
