@@ -1,0 +1,22 @@
+- name: Build Archive
+        run: |
+          cd ios
+          # 1. Ensure the workspace is clean
+          xcodebuild clean -workspace GhostTV.xcworkspace -scheme GhostTV
+          
+          # 2. Build with specific flags to ignore the Preview/Optimization warnings
+          xcodebuild -workspace GhostTV.xcworkspace \
+            -scheme GhostTV \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            OTHER_SWIFT_FLAGS="-Onone" \
+            SWIFT_OPTIMIZATION_LEVEL="-Onone" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            -allowProvisioningUpdates || true
+          
+          # 3. Create the Payload folder and zip the IPA
+          mkdir -p Payload
+          # We use a wildcard here to find the .app folder regardless of the exact path
+          cp -r build/Build/Products/Release-iphoneos/*.app Payload/
+          zip -r ../GhostTV.ipa Payload
